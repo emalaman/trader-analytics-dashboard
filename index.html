@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>📊 Trader Analytics Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: #0a0a0a; color: #e5e5e5; font-family: 'Inter', sans-serif; }
+    .card { background: #1a1a1a; border: 1px solid #333; border-radius: 0.75rem; padding: 1.25rem; }
+    .badge { font-size: .7rem; padding: .2rem .5rem; border-radius: 999px; font-weight: 700; text-transform: uppercase; }
+    .bg-green-600 { background: rgba(34, 197, 94, 0.6); color: #22c55e; }
+    .bg-red-600 { background: rgba(239, 68, 68, 0.6); color: #ef4444; }
+    .bg-blue-600 { background: rgba(59, 130, 246, 0.6); color: #3b82f6; }
+    .bg-yellow-600 { background: rgba(250, 204, 21, 0.6); color: #facc15; }
+    .stat-card { background: #1a1a1a; border: 1px solid #333; border-radius: 0.5rem; padding: 1rem; text-align: center; }
+    .stat-value { font-size: 1.75rem; font-weight: 800; color: #a78bfa; }
+    .profit-positive { color: #22c55e; }
+    .profit-negative { color: #ef4444; }
+    .alert-pulse { animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.7; } }
+  </style>
+</head>
+<body class="min-h-screen p-4 md:p-6">
+  <div class="max-w-7xl mx-auto">
+    <header class="mb-8 text-center">
+      <h1 class="text-3xl font-bold text-white mb-2">📊 Trader Analytics Dashboard</h1>
+      <p class="text-gray-400">Análise de padrões e detecção de oportunidades</p>
+      <div class="text-sm text-gray-500 mt-2">Atualizado: %GENERATED_AT%</div>
+    </header>
+
+    <!-- Stats -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div class="stat-card">
+        <div class="text-gray-400 text-xs uppercase">Posições</div>
+        <div class="stat-value" id="total-positions">%TOTAL_POSITIONS%</div>
+      </div>
+      <div class="stat-card">
+        <div class="text-gray-400 text-xs uppercase">Padrões Encontrados</div>
+        <div class="stat-value text-yellow" id="patterns">%PATTERNS_FOUND%</div>
+      </div>
+      <div class="stat-card">
+        <div class="text-gray-400 text-xs uppercase">Win Rate</div>
+        <div class="stat-value" id="win-rate">--%</div>
+      </div>
+      <div class="stat-card">
+        <div class="text-gray-400 text-xs uppercase">Profit Factor</div>
+        <div class="stat-value" id="profit-factor">--</div>
+      </div>
+    </div>
+
+    <!-- Alertas -->
+    <div class="card mb-6 border-yellow-600" id="alerts-section" style="display: none;">
+      <h2 class="text-xl font-bold text-yellow-400 mb-4">🚨 Padrões Detectados</h2>
+      <p class="text-gray-400 text-sm mb-4">Mercados que se encaixam no seu padrão de bons traders (spread 1.5-2%, volume >$100k)</p>
+      <div id="alerts-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+    </div>
+
+    <!-- Posições atuais -->
+    <div class="card mb-6">
+      <h2 class="text-xl font-bold text-white mb-4">📈 Suas Posições</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse text-sm">
+          <thead>
+            <tr class="border-b border-gray-800 text-gray-400">
+              <th class="py-2 px-3">Mercado</th>
+              <th class="py-2 px-3 text-center">Lado</th>
+              <th class="py-2 px-3 text-right">Size</th>
+              <th class="py-2 px-3 text-right">Entry</th>
+              <th class="py-2 px-3 text-right">Atual</th>
+              <th class="py-2 px-3 text-right">P&L</th>
+              <th class="py-2 px-3 text-right">Spread</th>
+              <th class="py-2 px-3 text-right">Vol 24h</th>
+            </tr>
+          </thead>
+          <tbody id="positions-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Categorias performance -->
+    <div class="card mb-6">
+      <h2 class="text-xl font-bold text-white mb-4">📊 Performance por Categoria</h2>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4" id="category-stats"></div>
+    </div>
+
+    <!-- Top mercados -->
+    <div class="card mb-6">
+      <h2 class="text-xl font-bold text-white mb-4">🏆 Top Mercados (por P&L total)</h2>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse text-sm">
+          <thead>
+            <tr class="border-b border-gray-800 text-gray-400">
+              <th class="py-2 px-3">Mercado</th>
+              <th class="py-2 px-3 text-right">Trades</th>
+              <th class="py-2 px-3 text-right">P&L Total</th>
+            </tr>
+          </thead>
+          <tbody id="top-markets-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Oportunidades (padrão) -->
+    <div class="card">
+      <h2 class="text-xl font-bold text-white mb-4">🔍 Oportunidades no Seu Padrão</h2>
+      <p class="text-gray-400 text-sm mb-4">Mercados ativos com spread 1.5-2% e volume >$100k</p>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse text-sm">
+          <thead>
+            <tr class="border-b border-gray-800 text-gray-400">
+              <th class="py-2 px-3">Mercado</th>
+              <th class="py-2 px-3 text-right">YES</th>
+              <th class="py-2 px-3 text-right">NO</th>
+              <th class="py-2 px-3 text-right">Spread</th>
+              <th class="py-2 px-3 text-right">Vol 24h</th>
+              <th class="py-2 px-3 text-right">Categoria</th>
+            </tr>
+          </thead>
+          <tbody id="opportunities-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <footer class="mt-8 text-center text-gray-600 text-xs border-t border-gray-800 pt-4">
+      Dados: CLOB API • Atualização automática • %GENERATED_AT%
+    </footer>
+  </div>
+
+  <script>
+    const data = %DATA_JSON%;
+    
+    function fmtNumber(num) {
+      if (num >= 1e6) return (num/1e6).toFixed(2) + 'M';
+      if (num >= 1e3) return (num/1e3).toFixed(1) + 'k';
+      return num.toFixed(2);
+    }
+    
+    function fmtCurrency(num) {
+      const sign = num >= 0 ? '+' : '';
+      return sign + '$' + (num/1000).toFixed(1) + 'k';
+    }
+    
+    function fmtPercent(num) {
+      return (num >= 0 ? '+' : '') + num.toFixed(2) + '%';
+    }
+    
+    function moneyColor(num) {
+      return num >= 0 ? 'profit-positive' : 'profit-negative';
+    }
+    
+    // Renderizar stats
+    if (data.stats) {
+      document.getElementById('win-rate').textContent = data.stats.winRate.toFixed(1) + '%';
+      document.getElementById('profit-factor').textContent = data.stats.profitFactor.toFixed(2);
+    }
+    
+    // Renderizar posições
+    const positionsTable = document.getElementById('positions-table');
+    if (data.stats && data.stats.positions) {
+      positionsTable.innerHTML = data.stats.positions.map(p => `
+        <tr class="border-b border-gray-800 hover:bg-gray-900">
+          <td class="py-2 px-3 text-white max-w-md truncate" title="${p.question}">${p.question}</td>
+          <td class="py-2 px-3 text-center">
+            <span class="badge ${p.outcome === 'YES' ? 'bg-green-600' : 'bg-red-600'}">${p.outcome}</span>
+          </td>
+          <td class="py-2 px-3 text-right">$${fmtNumber(p.size)}</td>
+          <td class="py-2 px-3 text-right">${p.entryPrice.toFixed(3)}</td>
+          <td class="py-2 px-3 text-right font-bold ${moneyColor(p.pnl)}">${p.currentPrice.toFixed(3)}</td>
+          <td class="py-2 px-3 text-right font-bold ${moneyColor(p.pnl)}">${fmtCurrency(p.pnl)}</td>
+          <td class="py-2 px-3 text-right">${p.spread.toFixed(1)}%</td>
+          <td class="py-2 px-3 text-right">$${fmtNumber(p.volume24h)}</td>
+        </tr>
+      `).join('');
+    }
+    
+    // Renderizar categorias
+    const catStats = document.getElementById('category-stats');
+    if (data.stats && data.stats.byCategory) {
+      catStats.innerHTML = data.stats.byCategory.map(cat => `
+        <div class="card text-center">
+          <div class="text-gray-400 text-xs uppercase mb-1">${cat.category}</div>
+          <div class="text-xl font-bold ${cat.pnl >= 0 ? 'text-green' : 'text-red'}">${fmtCurrency(cat.pnl)}</div>
+          <div class="text-xs text-gray-400">${cat.count} posições</div>
+        </div>
+      `).join('');
+    }
+    
+    // Renderizar top mercados
+    const topMarketsTable = document.getElementById('top-markets-table');
+    if (data.stats && data.stats.topMarkets) {
+      topMarketsTable.innerHTML = data.stats.topMarkets.map(m => `
+        <tr class="border-b border-gray-800 hover:bg-gray-900">
+          <td class="py-2 px-3 text-white max-w-md truncate" title="${m.question}">${m.question}</td>
+          <td class="py-2 px-3 text-right">${m.trades}</td>
+          <td class="py-2 px-3 text-right font-bold ${moneyColor(m.totalPnL)}">${fmtCurrency(m.totalPnL)}</td>
+        </tr>
+      `).join('');
+    }
+    
+    // Renderizar alertas (padrões)
+    const alertsSection = document.getElementById('alerts-section');
+    const alertsList = document.getElementById('alerts-list');
+    if (data.patterns && data.patterns.length > 0) {
+      alertsSection.style.display = 'block';
+      alertsList.innerHTML = data.patterns.map(p => `
+        <div class="card border-yellow-600 alert-pulse">
+          <div class="flex justify-between items-start mb-2">
+            <h3 class="text-sm font-bold text-white flex-1">${p.question}</h3>
+            <span class="badge bg-yellow-600">PADRÃO</span>
+          </div>
+          <div class="text-xs text-gray-400 grid grid-cols-2 gap-2 mb-2">
+            <div>Lado: <span class="${p.outcome==='YES'?'text-green':'text-red'}">${p.outcome}</span></div>
+            <div>Spread: ${p.spread.toFixed(1)}%</div>
+            <div>Volume: $${(p.volume24h/1000).toFixed(0)}k</div>
+            <div>Tempo: ${p.timeLeft}</div>
+          </div>
+          <div class="text-xs text-yellow-400">${p.matchReason}</div>
+        </div>
+      `).join('');
+    } else {
+      alertsSection.style.display = 'none';
+    }
+    
+    // Renderizar oportunidades (mercados que se encaixam no padrão)
+    const oppTable = document.getElementById('opportunities-table');
+    if (data.recentMarkets && data.recentMarkets.length > 0) {
+      oppTable.innerHTML = data.recentMarkets.map(m => `
+        <tr class="border-b border-gray-800 hover:bg-gray-900">
+          <td class="py-2 px-3 text-white max-w-md truncate" title="${m.question}">${m.question}</td>
+          <td class="py-2 px-3 text-right">${m.yesPrice.toFixed(3)}</td>
+          <td class="py-2 px-3 text-right">${m.noPrice.toFixed(3)}</td>
+          <td class="py-2 px-3 text-right">${m.spread.toFixed(1)}%</td>
+          <td class="py-2 px-3 text-right">$${fmtNumber(m.volume)}</td>
+          <td class="py-2 px-3 text-right">${m.category}</td>
+        </tr>
+      `).join('');
+    } else {
+      oppTable.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-gray-500">Nenhuma oportunidade encontrada</td></tr>';
+    }
+  </script>
+</body>
+</html>
