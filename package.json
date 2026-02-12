@@ -5,9 +5,8 @@
   "main": "fetch.js",
   "scripts": {
     "fetch": "node fetch.js",
-    "analyze": "node analyze.js",
     "generate": "node generate.js",
-    "build": "npm run fetch && npm run analyze && npm run generate",
+    "build": "npm run fetch && npm run generate",
     "deploy": "npm run build && git add -A && git commit -m 'Update analytics' && git push"
   },
   "keywords": ["polymarket", "trading", "analytics", "clob"],
