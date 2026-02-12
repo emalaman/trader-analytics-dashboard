@@ -127,6 +127,9 @@ function calculateTimeLeft(endDate) {
   return `${hours}h`;
 }
 
+// Categorias preferidas (ajuste aqui)
+const PREFERRED_CATEGORIES = ['Crypto', 'Elections', 'Politics', 'Sports', 'US-current-affairs', 'Coronavirus'];
+
 // Identificar padrões de bons traders
 function detectPatterns(positions, markets) {
   const patterns = [];
@@ -137,17 +140,18 @@ function detectPatterns(positions, markets) {
     
     const analysis = analyzePosition(pos, market);
     
-    // Critério de "bom trader": spread 1.5-2%, volume alto, tempo adequado
+    // Critério de "bom trader": spread 1-3%, volume >$50k, categoria preferida, tempo adequado
     const isGoodPattern = 
-      analysis.spread >= 1.5 && 
-      analysis.spread <= 2.0 &&
-      analysis.volume24h >= 100000 &&
+      analysis.spread >= 1.0 && 
+      analysis.spread <= 3.0 &&
+      analysis.volume24h >= 50000 &&
+      PREFERRED_CATEGORIES.includes(market.category) &&
       analysis.timeLeft && !analysis.timeLeft.includes('Expirado');
     
     if (isGoodPattern) {
       patterns.push({
         ...analysis,
-        matchReason: `Spread ${analysis.spread.toFixed(1)}%, Volume $${(analysis.volume24h/1000).toFixed(0)}k, Tempo ${analysis.timeLeft}`
+        matchReason: `Spread ${analysis.spread.toFixed(1)}%, Volume $${(analysis.volume24h/1000).toFixed(0)}k, Categoria: ${market.category}, Tempo ${analysis.timeLeft}`
       });
     }
   }
@@ -237,7 +241,7 @@ async function main() {
       },
       stats: stats,
       patterns: patterns,
-      recentMarkets: markets.slice(0, 50).map(m => ({
+      recentMarkets: markets.slice(0, 100).map(m => ({
         id: m.id,
         question: m.question,
         yesPrice: parseFloat(m.outcomePrices?.[0] || 0),
@@ -246,7 +250,12 @@ async function main() {
         liquidity: parseFloat(m.liquidity || 0),
         spread: Math.abs(parseFloat(m.outcomePrices?.[0] || 0) - 0.5) * 2,
         category: m.category
-      })).filter(m => m.spread >= 1.5 && m.spread <= 2.0 && m.volume >= 100000)
+      })).filter(m => 
+        m.spread >= 1.0 && 
+        m.spread <= 3.0 && 
+        m.volume >= 50000 &&
+        PREFERRED_CATEGORIES.includes(m.category)
+      )
         .sort((a, b) => b.volume - a.volume)
         .slice(0, 20)
     };
