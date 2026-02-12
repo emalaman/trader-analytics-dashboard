@@ -2,7 +2,7 @@ name: Deploy Trader Analytics
 
 on:
   push:
-    branches: [ main ]
+    branches: [ master ]
   schedule:
     - cron: '*/1 * * * *'  # A cada 1 minuto (máximo permitido)
   workflow_dispatch:
